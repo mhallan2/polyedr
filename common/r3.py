@@ -42,7 +42,8 @@ class R3:
                   self.z * other.x - self.x * other.z,
                   self.x * other.y - self.y * other.x)
 
-    # Расстояние от точки (self) до плоскости, задаваемой точкой (a) и вектором внешней нормали (n)
+    # Расстояние от точки (self) до плоскости, задаваемой точкой (a)
+    # и вектором внешней нормали (n)
     def distance_to_plane(self, scale=1.0, value=-1.0, axis='y'):
         distance = 0.0
         if axis == 'x':
@@ -57,7 +58,7 @@ class R3:
 
     # Для задания
     def is_good_point(self, scale=1.0, distance=2.0):
-        #print(self.distance_to_plane(scale))
+        # print(self.distance_to_plane(scale))
         return self.distance_to_plane(scale) > distance
 
     # Длина вектора
