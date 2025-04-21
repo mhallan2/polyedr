@@ -1,12 +1,12 @@
-from math import pi
+from math import pi, atan2
 from functools import reduce
 from operator import add
 from common.r3 import R3
-from common.tk_drawer import TkDrawer
 
 
 class Segment:
     """ Одномерный отрезок """
+
     # Параметры конструктора: начало и конец отрезка (числа)
 
     def __init__(self, beg, fin):
@@ -27,9 +27,10 @@ class Segment:
     # Разность отрезков
     # Разность двух отрезков всегда является списком из двух отрезков!
     def subtraction(self, other):
-        return [Segment(
-            self.beg, self.fin if self.fin < other.beg else other.beg),
-            Segment(self.beg if self.beg > other.fin else other.fin, self.fin)]
+        return [
+            Segment(self.beg, self.fin if self.fin < other.beg else other.beg),
+            Segment(self.beg if self.beg > other.fin else other.fin, self.fin)
+        ]
 
 
 class Edge:
@@ -56,14 +57,14 @@ class Edge:
                 return
 
         shade.intersect(
-            self.intersect_edge_with_normal(
-                facet.vertexes[0], facet.h_normal()))
+            self.intersect_edge_with_normal(facet.vertexes[0],
+                                            facet.h_normal()))
+
         if shade.is_degenerate():
             return
         # Преобразование списка «просветов», если тень невырождена
         gaps = [s.subtraction(shade) for s in self.gaps]
-        self.gaps = [
-            s for s in reduce(add, gaps, []) if not s.is_degenerate()]
+        self.gaps = [s for s in reduce(add, gaps, []) if not s.is_degenerate()]
 
     # Преобразование одномерных координат в трёхмерные
     def r3(self, t):
@@ -77,16 +78,76 @@ class Edge:
             return Segment(Edge.SFIN, Edge.SBEG)
         if f0 < 0.0 and f1 < 0.0:
             return Segment(Edge.SBEG, Edge.SFIN)
-        x = - f0 / (f1 - f0)
+        x = -f0 / (f1 - f0)
         return Segment(Edge.SBEG, x) if f0 < 0.0 else Segment(x, Edge.SFIN)
 
 
 class Facet:
     """ Грань полиэдра """
+
     # Параметры конструктора: список вершин
 
     def __init__(self, vertexes):
         self.vertexes = vertexes
+        self.area = self.calculate_area() / (Polyedr.scale**2)
+        #print(self.area)
+        self.good_vertices_count = sum(1 for v in self.vertexes
+                                       if v.is_good_point(Polyedr.scale))
+        #print(self.good_vertices_count)
+
+    # Возвращает True, если не более 2 вершин грани - "хорошие"
+    def qualifies_for_special_area(self):
+        return self.good_vertices_count <= 2
+
+    # Возвращает площадь, если грань удовлетворяет условию
+    def get_special_area(self):
+        return self.area if self.qualifies_for_special_area() else 0.0
+
+    def calculate_area(self, eps=1e-10):
+        area = 0.0
+        if len(self.vertexes) < 3:
+            return area  # Не является многоугольником
+
+        normal = self.h_normal()
+
+        # Плоскости проекций и их нормали
+        planes = {
+            'XY': (R3(0.0, 0.0, 1.0), lambda p: (p.x, p.y)),
+            'XZ': (R3(0.0, 1.0, 0.0), lambda p: (p.z, p.x)),
+            'YZ': (R3(1.0, 0.0, 0.0), lambda p: (p.y, p.z))
+        }
+
+        for plane_normal, project in planes.values():
+            cos_angle = normal.dot(plane_normal) / normal.length()
+            if abs(cos_angle) <= eps:
+                continue  # Пропускаем вырожденные проекции
+
+            projected = [project(p) for p in self.vertexes]
+            area = abs(self.shoelace_area(projected) / cos_angle)
+
+        return area
+
+    # Вычисляем площадь полигона из упорядоченных точек по методу "Шнурка"
+    def shoelace_area(self, points):
+        if len(points) < 3:
+            return 0.0
+
+        # Центр масс
+        c1, c2 = (sum(coords) / len(points) for coords in zip(*points))
+
+        # Сортируем точки по углу относительно центра
+        def angle_key(p):
+            return atan2(p[1] - c2, p[0] - c1)
+
+        points = sorted(points, key=angle_key, reverse=True)
+
+        n = len(points)
+        area = 0.0
+        for i in range(n):
+            x_i, y_i = points[i]
+            x_j, y_j = points[(i + 1) % n]
+            area += 0.5 * ((x_i * y_j) - (x_j * y_i))
+        return area
 
     # «Вертикальна» ли грань?
     def is_vertical(self):
@@ -94,9 +155,8 @@ class Facet:
 
     # Нормаль к «горизонтальному» полупространству
     def h_normal(self):
-        n = (
-            self.vertexes[1] - self.vertexes[0]).cross(
-            self.vertexes[2] - self.vertexes[0])
+        n = (self.vertexes[1] - self.vertexes[0]).cross(self.vertexes[2] -
+                                                        self.vertexes[0])
         return n * (-1.0) if n.dot(Polyedr.V) < 0.0 else n
 
     # Нормали к «вертикальным» полупространствам, причём k-я из них
@@ -108,19 +168,20 @@ class Facet:
     # Вспомогательный метод
     def _vert(self, k):
         n = (self.vertexes[k] - self.vertexes[k - 1]).cross(Polyedr.V)
-        return n * \
-            (-1.0) if n.dot(self.vertexes[k - 1] - self.center()) < 0.0 else n
+        return n * (-1.0) if n.dot(self.vertexes[k - 1] -
+                                   self.center()) < 0.0 else n
 
     # Центр грани
     def center(self):
-        return sum(self.vertexes, R3(0.0, 0.0, 0.0)) * \
-            (1.0 / len(self.vertexes))
+        return sum(self.vertexes, R3(0.0, 0.0,
+                                     0.0)) * (1.0 / len(self.vertexes))
 
 
 class Polyedr:
     """ Полиэдр """
     # вектор проектирования
     V = R3(0.0, 0.0, 1.0)
+    scale = 1.0
 
     # Параметры конструктора: файл, задающий полиэдр
     def __init__(self, file):
@@ -136,6 +197,7 @@ class Polyedr:
                     buf = line.split()
                     # коэффициент гомотетии
                     c = float(buf.pop(0))
+                    Polyedr.scale = c
                     # углы Эйлера, определяющие вращение
                     alpha, beta, gamma = (float(x) * pi / 180.0 for x in buf)
                 elif i == 1:
@@ -144,8 +206,8 @@ class Polyedr:
                 elif i < nv + 2:
                     # задание всех вершин полиэдра
                     x, y, z = (float(x) for x in line.split())
-                    self.vertexes.append(R3(x, y, z).rz(
-                        alpha).ry(beta).rz(gamma) * c)
+                    self.vertexes.append(
+                        R3(x, y, z).rz(alpha).ry(beta).rz(gamma) * c)
                 else:
                     # вспомогательный массив
                     buf = line.split()
@@ -158,6 +220,11 @@ class Polyedr:
                         self.edges.append(Edge(vertexes[n - 1], vertexes[n]))
                     # задание самой грани
                     self.facets.append(Facet(vertexes))
+
+    def calculate_special_area(self):
+        #for i in range(len(self.facets)):
+        #print(i)
+        return sum(f.get_special_area() for f in self.facets)
 
     # Метод изображения полиэдра
     def draw(self, tk):  # pragma: no cover
