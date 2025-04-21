@@ -1,12 +1,12 @@
-from math import pi
+from math import pi, atan2
 from functools import reduce
 from operator import add
 from common.r3 import R3
-from common.tk_drawer import TkDrawer
 
 
 class Segment:
     """ Одномерный отрезок """
+
     # Параметры конструктора: начало и конец отрезка (числа)
 
     def __init__(self, beg, fin):
@@ -87,6 +87,99 @@ class Facet:
 
     def __init__(self, vertexes):
         self.vertexes = vertexes
+        self.area = self.calculate_area() / (Polyedr.scale ** 2)
+        #print(self.area)
+        self.good_vertices_count = sum(1 for v in self.vertexes if v.is_good_point(Polyedr.scale))
+        #print(self.good_vertices_count)
+
+    # Возвращает True, если не более 2 вершин грани - "хорошие"
+    def qualifies_for_special_area(self):
+        return self.good_vertices_count <= 2
+
+    # Возвращает площадь, если грань удовлетворяет условию
+    def get_special_area(self):
+        return self.area if self.qualifies_for_special_area() else 0.0
+
+    def calculate_area(self):
+        COORD_SELECTORS = {
+            'XY': lambda p: (p.x, p.y),
+            'XZ': lambda p: (p.x, p.z),
+            'YZ': lambda p: (p.y, p.z)
+        }
+
+        if len(self.vertexes) < 3:
+            return 0.0  # Не является многоугольником
+
+        # Вычисляем нормаль к грани
+        normal = self.h_normal()
+
+        # Нормали координатных плоскостей
+        YZ = R3(1.0, 0.0, 0.0)  # Плоскость YZ (нормаль по X)
+        XZ = R3(0.0, 1.0, 0.0)  # Плоскость XZ (нормаль по Y)
+        XY = R3(0.0, 0.0, 1.0)  # Плоскость XY (нормаль по Z)
+
+        for unit_normal, plane_name in [(YZ, 'YZ'), (XZ, 'XZ'), (XY, 'XY')]:
+            cos_angle = normal.dot(unit_normal) / normal.length()
+
+            # Если проекция невырожденная (косинус не нулевой)
+            if abs(cos_angle) > 1e-10:
+                # Выбираем координаты для проекции
+                if plane_name == 'YZ':
+                    proj = [R3(0.0, v.y, v.z) for v in self.vertexes]  # Проекция на YZ
+                elif plane_name == 'XZ':
+                    proj = [R3(v.x, 0.0, v.z) for v in self.vertexes]  # Проекция на XZ
+                else:
+                    proj = [R3(v.x, v.y, 0.0) for v in self.vertexes]  # Проекция на XY
+
+                # Вычисляем площадь проекции по методу "Шнурка"
+                get_coords = COORD_SELECTORS[plane_name]
+                proj = self.order_points(proj, plane_name)
+                n = len(proj)
+                area_proj = 0.0
+                for i in range(n):
+                    x_i, y_i = get_coords(proj[i])
+                    x_j, y_j = get_coords(proj[(i + 1) % n])
+                    area_proj += (x_i * y_j) - (x_j * y_i)
+                area_proj = abs(area_proj) / 2.0
+
+                # Вычисляем реальную площадь с учетом угла
+                real_area = area_proj / abs(cos_angle)
+                return real_area
+
+        # Если все проекции вырожденные
+        return 0.0
+
+    def order_points(self, proj, plane='XY'):
+        # Вычисляем центр масс проекции
+        if plane == 'XY':
+            centroid = R3(sum(v.x for v in proj) / len(proj),
+                          sum(v.y for v in proj) / len(proj), 0)
+        elif plane == 'XZ':
+            centroid = R3(sum(v.x for v in proj) / len(proj), 0,
+                          sum(v.z for v in proj) / len(proj))
+        elif plane == 'YZ':
+            centroid = R3(0, sum(v.y for v in proj) / len(proj),
+                          sum(v.z for v in proj) / len(proj))
+        else:
+            raise ValueError("Недопустимая плоскость.")
+
+        # Функция для вычисления угла
+        def get_angle(point):
+            if plane == 'XY':
+                dx = point.x - centroid.x
+                dy = point.y - centroid.y
+                return atan2(dy, dx)
+            elif plane == 'XZ':
+                dx = point.x - centroid.x
+                dz = point.z - centroid.z
+                return atan2(dz, dx)
+            else:  # YZ
+                dy = point.y - centroid.y
+                dz = point.z - centroid.z
+                return atan2(dz, dy)
+
+        # Сортируем по часовой стрелке
+        return sorted(proj, key=get_angle, reverse=True)
 
     # «Вертикальна» ли грань?
     def is_vertical(self):
@@ -109,7 +202,7 @@ class Facet:
     def _vert(self, k):
         n = (self.vertexes[k] - self.vertexes[k - 1]).cross(Polyedr.V)
         return n * \
-            (-1.0) if n.dot(self.vertexes[k - 1] - self.center()) < 0.0 else n
+               (-1.0) if n.dot(self.vertexes[k - 1] - self.center()) < 0.0 else n
 
     # Центр грани
     def center(self):
@@ -121,6 +214,7 @@ class Polyedr:
     """ Полиэдр """
     # вектор проектирования
     V = R3(0.0, 0.0, 1.0)
+    scale = 1.0
 
     # Параметры конструктора: файл, задающий полиэдр
     def __init__(self, file):
@@ -136,6 +230,7 @@ class Polyedr:
                     buf = line.split()
                     # коэффициент гомотетии
                     c = float(buf.pop(0))
+                    Polyedr.scale = c
                     # углы Эйлера, определяющие вращение
                     alpha, beta, gamma = (float(x) * pi / 180.0 for x in buf)
                 elif i == 1:
@@ -158,6 +253,11 @@ class Polyedr:
                         self.edges.append(Edge(vertexes[n - 1], vertexes[n]))
                     # задание самой грани
                     self.facets.append(Facet(vertexes))
+
+    def calculate_special_area(self):
+        #for i in range(len(self.facets)):
+        #print(i)
+        return sum(f.get_special_area() for f in self.facets)
 
     # Метод изображения полиэдра
     def draw(self, tk):  # pragma: no cover
