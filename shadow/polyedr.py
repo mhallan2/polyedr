@@ -90,10 +90,10 @@ class Facet:
     def __init__(self, vertexes):
         self.vertexes = vertexes
         self.area = self.calculate_area() / (Polyedr.scale**2)
-        #print(self.area)
+        # print(self.area)
         self.good_vertices_count = sum(1 for v in self.vertexes
                                        if v.is_good_point(Polyedr.scale))
-        #print(self.good_vertices_count)
+        # print(self.good_vertices_count)
 
     # Возвращает True, если не более 2 вершин грани - "хорошие"
     def qualifies_for_special_area(self):
@@ -222,8 +222,8 @@ class Polyedr:
                     self.facets.append(Facet(vertexes))
 
     def calculate_special_area(self):
-        #for i in range(len(self.facets)):
-        #print(i)
+        # for i in range(len(self.facets)):
+        # print(i)
         return sum(f.get_special_area() for f in self.facets)
 
     # Метод изображения полиэдра
