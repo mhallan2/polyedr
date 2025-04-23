@@ -36,3 +36,6 @@ class TestPolyedr(unittest.TestCase):
 
     def test_num_edges(self):
         self.assertEqual(len(self.polyedr.edges), 16)
+
+    def test_calculate_special_area(self):
+        self.assertEqual(self.polyedr.calculate_special_area(), 4.0)

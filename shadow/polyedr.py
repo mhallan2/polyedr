@@ -90,10 +90,10 @@ class Facet:
     def __init__(self, vertexes):
         self.vertexes = vertexes
         self.area = self.calculate_area() / (Polyedr.scale**2)
-        #print(self.area)
+        # print(self.area)
         self.good_vertices_count = sum(1 for v in self.vertexes
                                        if v.is_good_point(Polyedr.scale))
-        #print(self.good_vertices_count)
+        # print(self.good_vertices_count)
 
     # Возвращает True, если не более 2 вершин грани - "хорошие"
     def qualifies_for_special_area(self):
@@ -109,21 +109,18 @@ class Facet:
             return area  # Не является многоугольником
 
         normal = self.h_normal()
-
         # Плоскости проекций и их нормали
         planes = {
             'XY': (R3(0.0, 0.0, 1.0), lambda p: (p.x, p.y)),
             'XZ': (R3(0.0, 1.0, 0.0), lambda p: (p.z, p.x)),
             'YZ': (R3(1.0, 0.0, 0.0), lambda p: (p.y, p.z))
         }
-
         for plane_normal, project in planes.values():
             cos_angle = normal.dot(plane_normal) / normal.length()
-            if abs(cos_angle) <= eps:
-                continue  # Пропускаем вырожденные проекции
-
-            projected = [project(p) for p in self.vertexes]
-            area = abs(self.shoelace_area(projected) / cos_angle)
+            if abs(cos_angle) >= eps:
+                projected = [project(p) for p in self.vertexes]
+                area = abs(self.shoelace_area(projected) / cos_angle)
+                break
 
         return area
 
@@ -131,16 +128,7 @@ class Facet:
     def shoelace_area(self, points):
         if len(points) < 3:
             return 0.0
-
-        # Центр масс
-        c1, c2 = (sum(coords) / len(points) for coords in zip(*points))
-
-        # Сортируем точки по углу относительно центра
-        def angle_key(p):
-            return atan2(p[1] - c2, p[0] - c1)
-
-        points = sorted(points, key=angle_key, reverse=True)
-
+        points = self.order_points(points)
         n = len(points)
         area = 0.0
         for i in range(n):
@@ -149,14 +137,25 @@ class Facet:
             area += 0.5 * ((x_i * y_j) - (x_j * y_i))
         return area
 
+    def order_points(self, points):
+        # Центр масс
+        c1, c2 = (sum(coords) / len(points) for coords in zip(*points))
+
+        # Сортируем точки по углу относительно центра
+        def angle_key(p):
+            return atan2(p[1] - c2, p[0] - c1)
+
+        points = sorted(points, key=angle_key)
+        return points
+
     # «Вертикальна» ли грань?
     def is_vertical(self):
         return self.h_normal().dot(Polyedr.V) == 0.0
 
     # Нормаль к «горизонтальному» полупространству
     def h_normal(self):
-        n = (self.vertexes[1] - self.vertexes[0]).cross(self.vertexes[2] -
-                                                        self.vertexes[0])
+        n = (self.vertexes[1] - self.vertexes[0]).cross(
+            self.vertexes[2] - self.vertexes[0])
         return n * (-1.0) if n.dot(Polyedr.V) < 0.0 else n
 
     # Нормали к «вертикальным» полупространствам, причём k-я из них
@@ -222,8 +221,8 @@ class Polyedr:
                     self.facets.append(Facet(vertexes))
 
     def calculate_special_area(self):
-        #for i in range(len(self.facets)):
-        #print(i)
+        # for i in range(len(self.facets)):
+        # print(i)
         return sum(f.get_special_area() for f in self.facets)
 
     # Метод изображения полиэдра
