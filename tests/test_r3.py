@@ -108,3 +108,49 @@ class TestR3(unittest.TestCase):
     def test_cross04(self):
         self.assertEqual(R3ApproxMatcher(self.a.cross(R3(3.0, -2.0, 1.0))),
                          R3(8.0, 8.0, -8.0))
+
+    # Тесты расстояний до разных плоскостей
+    def test_distance_to_plane01(self):
+        point = R3(-2.0, 0.0, 0.0)
+        self.assertAlmostEqual(point.distance_to_plane(1.0, -1.0, 'x'), 1.0)
+
+    def test_distance_to_plane02(self):
+        point = R3(0.0, 2.0, 0.0)
+        self.assertAlmostEqual(point.distance_to_plane(1.0, 1.0, 'y'), 1.0)
+
+    def test_distance_to_plane03(self):
+        point = R3(0.0, 0.0, 2.0)
+        self.assertAlmostEqual(point.distance_to_plane(1.0, 1.0, 'z'), 1.0)
+
+    # Неверно выбранная ось (плоскость)
+    def test_distance_to_plane04(self):
+        with self.assertRaises(ValueError):
+            self.a.distance_to_plane(1.0, 1.0, 'invalid')
+
+    # Расстояние равно 0
+    def test_distance_to_plane05(self):
+        point = R3(1.0, 0.0, 0.0)
+        self.assertAlmostEqual(point.distance_to_plane(1.0, 1.0, 'x'), 0.0)
+
+    # Точка - "хорошая"
+    def test_is_good_point01(self):
+        point = R3(0.0, 3.0, 0.0)
+        self.assertTrue(point.is_good_point(1.0, 2.0))
+
+    # Точка - "плохая"
+    def test_is_good_point02(self):
+        point = R3(0.0, 0.0, 0.0)
+        self.assertFalse(point.is_good_point(1.0, 2.0))
+
+    # Тесты для длины вектора
+    def test_length01(self):
+        point = R3(0.0, 0.0, 0.0)
+        self.assertEqual(point.length(), 0.0)
+
+    def test_length02(self):
+        point = R3(1.0, 0.0, 0.0)
+        self.assertEqual(point.length(), 1.0)
+
+    def test_length03(self):
+        point = R3(1.0, 2.0, 2.0)
+        self.assertEqual(point.length(), 3.0)

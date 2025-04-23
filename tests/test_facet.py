@@ -46,10 +46,18 @@ class TestVoid(unittest.TestCase):
 
     # Нормали для квадратной грани
     def test_v_normal02(self):
-        f = Facet([R3(0.0, 0.0, 0.0), R3(2.0, 0.0, 0.0),
-                   R3(2.0, 2.0, 0.0), R3(0.0, 2.0, 0.0)])
-        normals = [R3(-1.0, 0.0, 0.0), R3(0.0, -1.0, 0.0),
-                   R3(1.0, 0.0, 0.0), R3(0.0, 1.0, 0.0)]
+        f = Facet([
+            R3(0.0, 0.0, 0.0),
+            R3(2.0, 0.0, 0.0),
+            R3(2.0, 2.0, 0.0),
+            R3(0.0, 2.0, 0.0)
+        ])
+        normals = [
+            R3(-1.0, 0.0, 0.0),
+            R3(0.0, -1.0, 0.0),
+            R3(1.0, 0.0, 0.0),
+            R3(0.0, 1.0, 0.0)
+        ]
         for t in zip(f.v_normals(), normals):
             self.assertEqual(R3CollinearMatcher(t[0]), t[1])
 
@@ -62,11 +70,104 @@ class TestVoid(unittest.TestCase):
 
     # Центр квадрата
     def test_center01(self):
-        f = Facet([R3(0.0, 0.0, 0.0), R3(2.0, 0.0, 0.0),
-                   R3(2.0, 2.0, 0.0), R3(0.0, 2.0, 0.0)])
+        f = Facet([
+            R3(0.0, 0.0, 0.0),
+            R3(2.0, 0.0, 0.0),
+            R3(2.0, 2.0, 0.0),
+            R3(0.0, 2.0, 0.0)
+        ])
         self.assertEqual(R3ApproxMatcher(f.center()), (R3(1.0, 1.0, 0.0)))
 
     # Центр треугольника
     def test_center02(self):
         f = Facet([R3(0.0, 0.0, 0.0), R3(3.0, 0.0, 0.0), R3(0.0, 3.0, 0.0)])
         self.assertEqual(R3ApproxMatcher(f.center()), (R3(1.0, 1.0, 0.0)))
+
+    # Тест площади треугольника (проекция на XY)
+    def test_calculate_area01(self):
+        f = Facet([R3(0.0, 0.0, 0.0), R3(2.0, 0.0, 0.0), R3(0.0, 2.0, 0.0)])
+        self.assertTrue(isclose(f.calculate_area(), 2.0))
+
+    # Тест площади квадрата (проекция на XZ)
+    def test_calculate_area02(self):
+        f = Facet([
+            R3(0.0, 0.0, 0.0),
+            R3(2.0, 0.0, 0.0),
+            R3(2.0, 0.0, 2.0),
+            R3(0.0, 0.0, 2.0)
+        ])
+        self.assertTrue(isclose(f.calculate_area(), 4.0))
+
+    # Тест площади вырожденной грани
+    def test_calculate_area03(self):
+        f = Facet([R3(0.0, 0.0, 0.0), R3(1.0, 0.0, 0.0)])
+        self.assertTrue(isclose(f.calculate_area(), 0.0))
+
+    # Тест площади треугольника (проекция на YZ)
+    def test_calculate_area04(self):
+        f = Facet([R3(0.0, 0.0, 0.0), R3(0.0, 3.0, 0.0), R3(0.0, 0.0, 3.0)])
+        self.assertTrue(isclose(f.calculate_area(), 4.5))
+
+    # Тест метода "шнурка" для квадрата
+    def test_shoelace_area01(self):
+        f = Facet([])
+        points = [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0)]
+        self.assertTrue(isclose(f.shoelace_area(points), 4.0))
+
+    # Тест метода "шнурка" для треугольника
+    def test_shoelace_area02(self):
+        f = Facet([])
+        points = [(0.0, 0.0), (3.0, 0.0), (0.0, 3.0)]
+        self.assertTrue(isclose(f.shoelace_area(points), 4.5))
+
+    # Тест метода "шнурка" для вырожденной грани
+    def test_shoelace_area03(self):
+        f = Facet([])
+        points = [(0.0, 0.0), (1.0, 0.0)]
+        self.assertTrue(isclose(f.shoelace_area(points), 0.0))
+
+    # Тест сортировки точек по углу
+    def test_order_points(self):
+        f = Facet([])
+        points = [(0.0, 1.0), (1.0, 0.0), (-1.0, 0.0), (0.0, -1.0)]
+        expected = [(0.0, -1.0), (1.0, 0.0), (0.0, 1.0), (-1.0, 0.0)]
+        points = f.order_points(points)
+        self.assertEqual(points, expected)
+
+    # Тест условия на "хорошие" вершины (<= 2)
+    def test_qualifies_for_special_area_true(self):
+        f = Facet([R3(0.0, 0.0, 0.0), R3(0.0, 2.0, 2.0), R3(0.0, 2.0, 0.0)])
+        # Вручную указываем количество "хороших" вершин, как будто бы
+        # коэффициент гомотетии полиэдра равен 1.
+        f.good_vertices_count = 2
+        self.assertTrue(f.qualifies_for_special_area())
+
+    # Тест условия на "хорошие" вершины (> 2)
+    def test_qualifies_for_special_area_false(self):
+        f = Facet([
+            R3(0.0, 0.0, 0.0),
+            R3(0.0, 2.0, 2.0),
+            R3(0.0, 2.0, 0.0),
+            R3(0.0, 3.0, 1.0)
+        ])
+        # Заглушка для теста
+        f.good_vertices_count = 3
+        self.assertFalse(f.qualifies_for_special_area())
+
+    # Тест возврата площади для подходящей грани
+    def test_get_special_area_qualified(self):
+        f = Facet([R3(0.0, 0.0, 0.0), R3(2.0, 0.0, 0.0), R3(0.0, 2.0, 0.0)])
+        f.area = f.calculate_area()
+        f.good_vertices_count = 1
+        self.assertTrue(isclose(f.get_special_area(), f.area))
+
+    # Тест возврата 0 для неподходящей грани
+    def test_get_special_area_not_qualified(self):
+        f = Facet([
+            R3(0.0, 0.0, 0.0),
+            R3(0.0, 2.0, 2.0),
+            R3(0.0, 2.0, 0.0),
+            R3(0.0, 3.0, 1.0)
+        ])
+        f.good_vertices_count = 3
+        self.assertTrue(isclose(f.get_special_area(), 0.0))
