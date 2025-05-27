@@ -86,7 +86,7 @@ class TestVoid(unittest.TestCase):
     # Тест площади треугольника (проекция на XY)
     def test_calculate_area01(self):
         f = Facet([R3(0.0, 0.0, 0.0), R3(2.0, 0.0, 0.0), R3(0.0, 2.0, 0.0)])
-        self.assertTrue(isclose(f.calculate_area(), 2.0))
+        self.assertTrue(isclose(f._area(), 2.0))
 
     # Тест площади квадрата (проекция на XZ)
     def test_calculate_area02(self):
@@ -96,43 +96,17 @@ class TestVoid(unittest.TestCase):
             R3(2.0, 0.0, 2.0),
             R3(0.0, 0.0, 2.0)
         ])
-        self.assertTrue(isclose(f.calculate_area(), 4.0))
+        self.assertTrue(isclose(f._area(), 4.0))
 
     # Тест площади вырожденной грани
     def test_calculate_area03(self):
         f = Facet([R3(0.0, 0.0, 0.0), R3(1.0, 0.0, 0.0)])
-        self.assertTrue(isclose(f.calculate_area(), 0.0))
+        self.assertTrue(isclose(f._area(), 0.0))
 
     # Тест площади треугольника (проекция на YZ)
     def test_calculate_area04(self):
         f = Facet([R3(0.0, 0.0, 0.0), R3(0.0, 3.0, 0.0), R3(0.0, 0.0, 3.0)])
-        self.assertTrue(isclose(f.calculate_area(), 4.5))
-
-    # Тест метода "шнурка" для квадрата
-    def test_shoelace_area01(self):
-        f = Facet([])
-        points = [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0)]
-        self.assertTrue(isclose(f.shoelace_area(points), 4.0))
-
-    # Тест метода "шнурка" для треугольника
-    def test_shoelace_area02(self):
-        f = Facet([])
-        points = [(0.0, 0.0), (3.0, 0.0), (0.0, 3.0)]
-        self.assertTrue(isclose(f.shoelace_area(points), 4.5))
-
-    # Тест метода "шнурка" для вырожденной грани
-    def test_shoelace_area03(self):
-        f = Facet([])
-        points = [(0.0, 0.0), (1.0, 0.0)]
-        self.assertTrue(isclose(f.shoelace_area(points), 0.0))
-
-    # Тест сортировки точек по углу
-    def test_order_points(self):
-        f = Facet([])
-        points = [(0.0, 1.0), (1.0, 0.0), (-1.0, 0.0), (0.0, -1.0)]
-        expected = [(0.0, -1.0), (1.0, 0.0), (0.0, 1.0), (-1.0, 0.0)]
-        points = f.order_points(points)
-        self.assertEqual(points, expected)
+        self.assertTrue(isclose(f._area(), 4.5))
 
     # Тест условия на "хорошие" вершины (<= 2)
     def test_qualifies_for_special_area_true(self):
@@ -157,7 +131,7 @@ class TestVoid(unittest.TestCase):
     # Тест возврата площади для подходящей грани
     def test_get_special_area_qualified(self):
         f = Facet([R3(0.0, 0.0, 0.0), R3(2.0, 0.0, 0.0), R3(0.0, 2.0, 0.0)])
-        f.area = f.calculate_area()
+        f.area = f._area()
         f.good_vertices_count = 1
         self.assertTrue(isclose(f.get_special_area(), f.area))
 

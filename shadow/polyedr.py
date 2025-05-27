@@ -89,7 +89,7 @@ class Facet:
 
     def __init__(self, vertexes):
         self.vertexes = vertexes
-        self.area = self.calculate_area() / (Polyedr.scale**2)
+        self.area = self._area(Polyedr.scale)
         # print(self.area)
         self.good_vertices_count = sum(1 for v in self.vertexes
                                        if v.is_good_point(Polyedr.scale))
@@ -103,50 +103,20 @@ class Facet:
     def get_special_area(self):
         return self.area if self.qualifies_for_special_area() else 0.0
 
-    def calculate_area(self, eps=1e-10):
-        area = 0.0
-        if len(self.vertexes) < 3:
-            return area  # Не является многоугольником
-
-        normal = self.h_normal()
-        # Плоскости проекций и их нормали
-        planes = {
-            'XY': (R3(0.0, 0.0, 1.0), lambda p: (p.x, p.y)),
-            'XZ': (R3(0.0, 1.0, 0.0), lambda p: (p.z, p.x)),
-            'YZ': (R3(1.0, 0.0, 0.0), lambda p: (p.y, p.z))
-        }
-        for plane_normal, project in planes.values():
-            cos_angle = normal.dot(plane_normal) / normal.length()
-            if abs(cos_angle) >= eps:
-                projected = [project(p) for p in self.vertexes]
-                area = abs(self.shoelace_area(projected) / cos_angle)
-                break
-
-        return area
-
-    # Вычисляем площадь полигона из упорядоченных точек по методу "Шнурка"
-    def shoelace_area(self, points):
-        if len(points) < 3:
-            return 0.0
-        points = self.order_points(points)
-        n = len(points)
-        area = 0.0
-        for i in range(n):
-            x_i, y_i = points[i]
-            x_j, y_j = points[(i + 1) % n]
-            area += 0.5 * ((x_i * y_j) - (x_j * y_i))
-        return area
-
-    def order_points(self, points):
-        # Центр масс
-        c1, c2 = (sum(coords) / len(points) for coords in zip(*points))
-
-        # Сортируем точки по углу относительно центра
-        def angle_key(p):
-            return atan2(p[1] - c2, p[0] - c1)
-
-        points = sorted(points, key=angle_key)
-        return points
+    def _area(self, c=1.0, to_calculate=True):
+        n = len(self.vertexes)
+        s = 0.0
+        if n <= 2:
+            to_calculate = False
+        if to_calculate:
+            mean = self.center()
+            s = 0.0
+            for i in range(n):
+                a1 = (self.vertexes[i - 1] - mean)
+                a2 = (self.vertexes[i] - mean)
+                s += a1.cross(a2).length()
+            s *= 0.5 / c ** 2
+        return s
 
     # «Вертикальна» ли грань?
     def is_vertical(self):
@@ -221,8 +191,6 @@ class Polyedr:
                     self.facets.append(Facet(vertexes))
 
     def calculate_special_area(self):
-        # for i in range(len(self.facets)):
-        # print(i)
         return sum(f.get_special_area() for f in self.facets)
 
     # Метод изображения полиэдра
