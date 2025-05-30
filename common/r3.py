@@ -2,7 +2,7 @@ from math import sin, cos, sqrt
 
 
 class R3:
-    """ Вектор (точка) в R3 """
+    """Вектор (точка) в R3"""
 
     # Конструктор
     def __init__(self, x, y, z):
@@ -24,13 +24,17 @@ class R3:
     def rz(self, fi):
         return R3(
             cos(fi) * self.x - sin(fi) * self.y,
-            sin(fi) * self.x + cos(fi) * self.y, self.z)
+            sin(fi) * self.x + cos(fi) * self.y,
+            self.z,
+        )
 
     # Поворот вокруг оси Oy
     def ry(self, fi):
         return R3(
-            cos(fi) * self.x + sin(fi) * self.z, self.y,
-            -sin(fi) * self.x + cos(fi) * self.z)
+            cos(fi) * self.x + sin(fi) * self.z,
+            self.y,
+            -sin(fi) * self.x + cos(fi) * self.z,
+        )
 
     # Скалярное произведение
     def dot(self, other):
@@ -38,32 +42,39 @@ class R3:
 
     # Векторное произведение
     def cross(self, other):
-        return R3(self.y * other.z - self.z * other.y,
-                  self.z * other.x - self.x * other.z,
-                  self.x * other.y - self.y * other.x)
+        return R3(
+            self.y * other.z - self.z * other.y,
+            self.z * other.x - self.x * other.z,
+            self.x * other.y - self.y * other.x,
+        )
 
     # Расстояние от точки (self) до плоскости, задаваемой точкой (a)
     # и вектором внешней нормали (n)
-    def distance_to_plane(self, scale=1.0, value=-1.0, axis='y'):
+    def distance_to_plane(self, scale=1.0, value=-1.0, axis="y"):
         distance = 0.0
-        if axis == 'x':
+        if axis == "x":
             distance = abs(self.x / scale - value)
-        elif axis == 'y':
+        elif axis == "y":
             distance = abs(self.y / scale - value)
-        elif axis == 'z':
+        elif axis == "z":
             distance = abs(self.z / scale - value)
         else:
             raise ValueError("Недопустимая ось. Используйте 'x', 'y' или 'z'")
         return distance
 
     # Для задания
-    def is_good_point(self, scale=1.0, distance=2.0):
+    def is_good_point(self, scale=1.0, distance=1.0):
         # print(self.distance_to_plane(scale))
-        return self.distance_to_plane(scale) > distance
+        return self.distance_to_plane(scale=scale, value=-1.0, axis="y") > distance
 
     # Длина вектора
     def length(self):
         return sqrt(self.x**2 + self.y**2 + self.z**2)
+
+    def __eq__(self, other):
+        if not isinstance(other, R3):
+            return NotImplemented
+        return self.x == other.x and self.y == other.y and self.z == other.z
 
 
 if __name__ == "__main__":  # pragma: no cover
