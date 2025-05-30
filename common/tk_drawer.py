@@ -40,7 +40,7 @@ class TkDrawer:
         self.root.update()
 
     #Рисование линии
-    def draw_line(self, p, q, line_color="black", line_width=1, dash=None):
+    def draw_line(self, p, q, line_color="black", line_width=2, dash=None):
         if dash:
             line_color = "gray"
         self.canvas.create_line(x(p),
@@ -52,7 +52,7 @@ class TkDrawer:
                                 dash=dash)
         self.root.update()
 
-    def draw_point(self, p, alpha, beta, gamma, c=1.0, point_size=2):
+    def draw_point(self, p, alpha, beta, gamma, c=1.0, point_size=5):
         # Цвета точки
         p_color = "red" if p.is_good_point(alpha, beta, gamma, c) else "blue"
         #print(
