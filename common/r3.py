@@ -48,43 +48,46 @@ class R3:
             self.x * other.y - self.y * other.x,
         )
 
-    # Расстояние от точки (self) до плоскости, задаваемой точкой (a)
-    # и вектором внешней нормали (n)
-    def distance_to_plane(self, scale=1.0, value=-1.0, axis="y"):
+    def transform(self, alpha, beta, gamma, c=1.0):
+        return self.rz(alpha).ry(beta).rz(gamma) * c
+
+    def untransform(self, alpha, beta, gamma, c=1.0):
+        return self.rz(-gamma).ry(-beta).rz(-alpha) * (1 / c)
+
+    def distance_to_plane(self, alpha, beta, gamma, c, value=-1.0, axis="y"):
         distance = 0.0
+        self = self.untransform(alpha, beta, gamma, c)
         if axis == "x":
-            distance = abs(self.x / scale - value)
+            distance = abs(self.x - value)
         elif axis == "y":
-            distance = abs(self.y / scale - value)
+            distance = abs(self.y - value)
         elif axis == "z":
-            distance = abs(self.z / scale - value)
+            distance = abs(self.z - value)
         else:
             raise ValueError("Недопустимая ось. Используйте 'x', 'y' или 'z'")
         return distance
 
     # Для задания
-    def is_good_point(self, scale=1.0, distance=1.0):
-        # print(self.distance_to_plane(scale))
-        return self.distance_to_plane(scale=scale, value=-1.0, axis="y") > distance
+    def is_good_point(self, alpha, beta, gamma, c=1.0, distance=1.0):
+        #print(self.distance_to_plane(alpha, beta, gamma, c) > distance)
+        return self.distance_to_plane(alpha, beta, gamma, c) > distance
 
     # Длина вектора
     def length(self):
-        return sqrt(self.x**2 + self.y**2 + self.z**2)
+        return sqrt(self.dot(self))
 
     def __eq__(self, other):
         if not isinstance(other, R3):
             return NotImplemented
         return self.x == other.x and self.y == other.y and self.z == other.z
 
+    def __repr__(self):
+        return f"{(self.x, self.y, self.z)}"
+
 
 if __name__ == "__main__":  # pragma: no cover
-    x = R3(1.0, 1.0, 1.0)
-    print("x", type(x), x.__dict__)
-    y = x + R3(1.0, -1.0, 0.0)
-    print("y", type(y), y.__dict__)
-    y = y.rz(1.0)
-    print("y", type(y), y.__dict__)
-    u = x.dot(y)
-    print("u", type(u), u)
-    v = x.cross(y)
-    print("v", type(v), v.__dict__)
+    x = R3(1.0, 34.0, 354.0)
+    alpha, beta, gamma, c = 20, 40, 69, 349
+    x = x.transform(alpha, beta, gamma, c)
+    x = x.untransform(alpha, beta, gamma, c)
+    print(x)

@@ -31,7 +31,7 @@ class Segment:
             Segment(self.beg, self.fin if self.fin < other.beg else other.beg),
             Segment(self.beg if self.beg > other.fin else other.fin, self.fin),
         ]
-    
+
     def __repr__(self):
         return f"{self.beg}, {self.fin}"
 
@@ -62,10 +62,8 @@ class Edge:
                 return
 
         shade.intersect(
-            self.intersect_edge_with_normal(
-                facet.vertexes[0], facet.h_normal()
-            )
-        )
+            self.intersect_edge_with_normal(facet.vertexes[0],
+                                            facet.h_normal()))
 
         if shade.is_degenerate():
             return
@@ -107,8 +105,8 @@ class Facet:
         self.vertexes = vertexes
         self.area = self._area(Polyedr.scale)
         self.good_vertices_count = sum(
-            1 for v in self.vertexes if v.is_good_point(Polyedr.scale)
-        )
+            1 for v in self.vertexes if v.is_good_point(
+                Polyedr.alpha, Polyedr.beta, Polyedr.gamma, Polyedr.scale))
 
     # Возвращает True, если не более 2 вершин грани - "хорошие"
     def qualifies_for_special_area(self):
@@ -139,9 +137,8 @@ class Facet:
 
     # Нормаль к «горизонтальному» полупространству
     def h_normal(self):
-        n = (self.vertexes[1] - self.vertexes[0]).cross(
-            self.vertexes[2] - self.vertexes[0]
-        )
+        n = (self.vertexes[1] - self.vertexes[0]).cross(self.vertexes[2] -
+                                                        self.vertexes[0])
         return n * (-1.0) if n.dot(Polyedr.V) < 0.0 else n
 
     # Нормали к «вертикальным» полупространствам, причём k-я из них
@@ -153,17 +150,13 @@ class Facet:
     # Вспомогательный метод
     def _vert(self, k):
         n = (self.vertexes[k] - self.vertexes[k - 1]).cross(Polyedr.V)
-        return (
-            n * (-1.0)
-            if n.dot(self.vertexes[k - 1] - self.center()) < 0.0
-            else n
-        )
+        return (n * (-1.0) if n.dot(self.vertexes[k - 1] -
+                                    self.center()) < 0.0 else n)
 
     # Центр грани
     def center(self):
-        return sum(self.vertexes, R3(0.0, 0.0, 0.0)) * (
-            1.0 / len(self.vertexes)
-        )
+        return sum(self.vertexes, R3(0.0, 0.0,
+                                     0.0)) * (1.0 / len(self.vertexes))
 
 
 class Polyedr:
@@ -201,8 +194,7 @@ class Polyedr:
                     # задание всех вершин полиэдра
                     x, y, z = (float(x) for x in line.split())
                     self.vertexes.append(
-                        R3(x, y, z).rz(alpha).ry(beta).rz(gamma) * c
-                    )
+                        R3(x, y, z).rz(alpha).ry(beta).rz(gamma) * c)
                 else:
                     # вспомогательный массив
                     buf = line.split()
@@ -223,13 +215,14 @@ class Polyedr:
     def draw(self, tk):  # pragma: no cover
         tk.clean()
         tk.draw_axes(Polyedr.alpha, Polyedr.beta, Polyedr.gamma, Polyedr.scale)
-        tk.draw_plane_y_eq_minus_1(
-            Polyedr.alpha, Polyedr.beta, Polyedr.gamma, Polyedr.scale
-        )
+        tk.draw_plane(Polyedr.alpha, Polyedr.beta, Polyedr.gamma,
+                      Polyedr.scale)
         for e in self.edges:
             a1, a2 = e.beg, e.fin
-            tk.draw_point(a1, Polyedr.scale)
-            tk.draw_point(a2, Polyedr.scale)
+            tk.draw_point(a1, Polyedr.alpha, Polyedr.beta, Polyedr.gamma,
+                          Polyedr.scale)
+            tk.draw_point(a2, Polyedr.alpha, Polyedr.beta, Polyedr.gamma,
+                          Polyedr.scale)
             for f in self.facets:
                 e.shadow(f)
             for s in e.gaps:
